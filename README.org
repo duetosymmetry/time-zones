@@ -1,0 +1,15 @@
+#+TITLE: Time Zones
+#+AUTHOR: Álvaro Ramírez
+👉 [[https://github.com/sponsors/xenodium][Support this work via GitHub Sponsors]]
+
+[[file:time-zones.gif]]
+
+* Time Zones
+
+A major mode to view the time at any city across the world.
+
+Launch with:
+
+#+begin_src
+  M-x time-zones
+#+end_src
