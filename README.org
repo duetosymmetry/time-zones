@@ -10,6 +10,15 @@ A major mode to view the time at any city across the world.
 
 Launch =time-zones= with:
 
+* Install
+
+#+begin_src emacs-lisp :lexical no
+  (use-package time-zones
+    :vc (:url "https://github.com/xenodium/time-zones"))
+#+end_src
+
+* Run
+
 #+begin_src
   M-x time-zones
 #+end_src
