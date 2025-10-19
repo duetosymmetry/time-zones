@@ -112,6 +112,15 @@
   (setq time-zones--time-offset (- time-zones--time-offset (* 60 60)))
   (time-zones--refresh-display))
 
+(defun time-zones-jump-to-date ()
+  "Jump to date and stop auto-refresh."
+  (interactive)
+  (require 'org)
+  (time-zones--stop-timer)
+  (setq time-zones--time-offset
+        (fround (float-time (time-subtract (org-read-date t t) (current-time)))))
+  (time-zones--refresh-display))
+
 (defvar time-zones--timezones-url
   "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/refs/heads/master/json/countries%2Bstates%2Bcities.json.gz"
   "URL for countries, states, and cities database.")
@@ -222,6 +231,7 @@ display a ☽ symbol."
     (define-key map (kbd "b") 'time-zones-time-backward)
     (define-key map (kbd "F") 'time-zones-time-forward-hour)
     (define-key map (kbd "B") 'time-zones-time-backward-hour)
+    (define-key map (kbd "j") 'time-zones-jump-to-date)
     (define-key map (kbd "n") 'next-line)
     (define-key map (kbd "p") 'previous-line)
     map)
@@ -238,6 +248,8 @@ display a ☽ symbol."
          " forward  "
          (propertize "b" 'face 'help-key-binding)
          " backward  "
+         (propertize "j" 'face 'help-key-binding)
+         " jump  "
          (propertize "q" 'face 'help-key-binding)
          " quit"))
   (time-zones--load-city-list)
