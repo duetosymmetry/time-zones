@@ -184,6 +184,16 @@
 (defvar time-zones--time-offset 0
   "Manual time offset in seconds.  When non-zero, timer is stopped.")
 
+(defcustom time-zones-waking-hours '(6 . 22)
+  "Cons cell defining waking hours as (START . END).
+START is the hour when waking hours begin (default 6 for 6:00 AM).
+END is the hour when waking hours end (default 22 for 10:00 PM).
+Hours outside this range are considered sleeping hours and will
+display a ☽ symbol."
+  :type '(cons (integer :tag "Start hour (0-23)")
+               (integer :tag "End hour (0-23)"))
+  :group 'time-zones)
+
 (defun time-zones--save-city-list ()
   "Save the city list to file for persistence across sessions."
   (with-temp-file time-zones--city-list-file
@@ -304,11 +314,16 @@
                  (city-name (map-elt city 'city))
                  (state (map-elt city 'state))
                  (time-str (format-time-string "%H:%M" display-time timezone))
+                 (hour (string-to-number (format-time-string "%H" display-time timezone)))
+                 (waking-start (car time-zones-waking-hours))
+                 (waking-end (cdr time-zones-waking-hours))
+                 (is-sleeping (or (< hour waking-start) (>= hour waking-end)))
+                 (sleep-indicator (if is-sleeping "☽" " "))
                  (date-str (format-time-string "%A %d %B" display-time timezone))
                  (location (or city-name state))
                  (line-start (point)))
-            (insert (format (format " %%s  %%s  %%-%ds  %%s\n" max-location-width)
-                            time-str flag
+            (insert (format (format " %%s %%s  %%s  %%-%ds  %%s\n" max-location-width)
+                            sleep-indicator time-str flag
                             (propertize location
                                         'face 'font-lock-builtin-face)
                             date-str))
