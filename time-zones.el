@@ -69,7 +69,10 @@
   "Remove city at point from the display."
   (interactive)
   (let ((city-data (get-text-property (point) 'time-zones-timezone)))
-    (when city-data
+    (when (and city-data
+               (y-or-n-p (format "Remove %s? "
+                                 (or (map-elt city-data 'city)
+                                     (map-elt city-data 'state)))))
       (setq time-zones--city-list
             (seq-remove (lambda (city) (equal city city-data)) time-zones--city-list))
       (time-zones--save-city-list)
