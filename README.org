@@ -8,8 +8,14 @@
 
 A major mode to view the time at any city across the world.
 
-Launch with:
+Launch =time-zones= with:
 
 #+begin_src
   M-x time-zones
 #+end_src
+
+Press =+= to add a city.
+
+* Enjoy
+
+If you enjoy my =time-zones= package or my work, consider [[https://github.com/sponsors/xenodium][sponsoring]] to make it all sustainable.
