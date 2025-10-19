@@ -32,6 +32,7 @@
 
 ;;; Code:
 
+;;;###autoload
 (defun time-zones ()
   "Open or switch to the time zones buffer."
   (interactive)
