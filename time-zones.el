@@ -44,7 +44,8 @@
     (fit-window-to-buffer)))
 
 (defun time-zones-select-timezone ()
-  "Download timezone data and allow user to select a timezone using `completing-read'."
+  "Download timezone data and allow user to select a timezone.
+Uses `completing-read' for selection."
   (message "Fetching...")
   ;; Force in case M-x needs to close
   ;; before blocking on download.
@@ -322,7 +323,6 @@ Returns a new list sorted chronologically, accounting for date changes."
           (let* ((timezone (map-elt city 'timezone))
                  (flag (or (time-zones--country-flag (map-elt city 'country))
                            time-zones--fallback-flag))
-                 (country (map-elt city 'country))
                  (city-name (map-elt city 'city))
                  (state (map-elt city 'state))
                  (time-str (format-time-string "%H:%M" display-time timezone))
@@ -353,7 +353,7 @@ Returns a new list sorted chronologically, accounting for date changes."
     (fit-window-to-buffer)
     (goto-char (point-min))
     (when (> current-line 1)
-      (goto-line current-line))))
+      (forward-line (1- current-line)))))
 
 (defun time-zones--country-flag (country-name)
   "Get the flag emoji for COUNTRY-NAME."
