@@ -65,12 +65,12 @@
       (time-zones--save-city-list)
       (time-zones--refresh-display))))
 
-(defun time-zones-remove-city-at-point ()
+(defun time-zones-delete-city-at-point ()
   "Remove city at point from the display."
   (interactive)
   (let ((city-data (get-text-property (point) 'time-zones-timezone)))
     (when (and city-data
-               (y-or-n-p (format "Remove %s? "
+               (y-or-n-p (format "Delete %s? "
                                  (or (map-elt city-data 'city)
                                      (map-elt city-data 'state)))))
       (setq time-zones--city-list
@@ -205,7 +205,7 @@
 (defvar time-zones-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "+") 'time-zones-add-city)
-    (define-key map (kbd "-") 'time-zones-remove-city-at-point)
+    (define-key map (kbd "D") 'time-zones-delete-city-at-point)
     (define-key map (kbd "r") 'time-zones-refresh)
     (define-key map (kbd "g") 'time-zones-refresh)
     (define-key map (kbd "f") 'time-zones-time-forward)
@@ -319,8 +319,8 @@
              " "
              (propertize "+" 'face 'help-key-binding)
              (propertize " add city  " 'face 'header-line)
-             (propertize "-" 'face 'help-key-binding)
-             (propertize " remove city  " 'face 'header-line)
+             (propertize "D" 'face 'help-key-binding)
+             (propertize " delete city  " 'face 'header-line)
              (propertize "g" 'face 'help-key-binding)
              (propertize " refresh  " 'face 'header-line)))
     (fit-window-to-buffer)
