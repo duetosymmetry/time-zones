@@ -280,6 +280,17 @@ display a ☽ symbol."
         base-time
       (time-zones--round-to-15-minutes base-time))))
 
+(defun time-zones--sort-cities-by-time (cities time)
+  "Sort CITIES in relation to TIME.
+Returns a new list sorted chronologically, accounting for date changes."
+  (sort (copy-sequence cities)
+        (lambda (city1 city2)
+          (let* ((tz1 (map-elt city1 'timezone))
+                 (tz2 (map-elt city2 'timezone))
+                 (time1 (string-to-number (format-time-string "%Y%m%d%H%M" time tz1)))
+                 (time2 (string-to-number (format-time-string "%Y%m%d%H%M" time tz2))))
+            (< time1 time2)))))
+
 (defun time-zones--refresh-display ()
   "Refresh the display of cities and their current times."
   (let* ((inhibit-read-only t)
@@ -297,16 +308,17 @@ display a ☽ symbol."
     (erase-buffer)
     (insert title)
     (when time-zones--city-list
-      ;; Calculate max location width for alignment
-      (let ((max-location-width
-             (apply #'max
-                    (mapcar (lambda (city)
-                              (let* ((city-name (map-elt city 'city))
-                                     (state (map-elt city 'state))
-                                     (location (or city-name state)))
-                                (length location)))
-                            time-zones--city-list))))
-        (dolist (city time-zones--city-list)
+      (let* ((sorted-cities (time-zones--sort-cities-by-time
+                             time-zones--city-list display-time))
+             (max-location-width
+              (apply #'max
+                     (mapcar (lambda (city)
+                               (let* ((city-name (map-elt city 'city))
+                                      (state (map-elt city 'state))
+                                      (location (or city-name state)))
+                                 (length location)))
+                             sorted-cities))))
+        (dolist (city sorted-cities)
           (let* ((timezone (map-elt city 'timezone))
                  (flag (or (time-zones--country-flag (map-elt city 'country))
                            time-zones--fallback-flag))
