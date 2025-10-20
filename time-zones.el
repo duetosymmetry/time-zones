@@ -32,6 +32,9 @@
 
 ;;; Code:
 
+(defconst time-zones--version "0.1.1"
+  "Version of the time-zones package.")
+
 ;;;###autoload
 (defun time-zones ()
   "Open or switch to the time zones buffer."
@@ -42,6 +45,12 @@
         (time-zones-mode)))
     (pop-to-buffer buffer)
     (fit-window-to-buffer)))
+
+;;;###autoload
+(defun time-zones-version ()
+  "Display the version of the time-zones package in the minibuffer."
+  (interactive)
+  (message "time-zones version %s" time-zones--version))
 
 (defun time-zones-select-timezone ()
   "Download timezone data and allow user to select a timezone.
