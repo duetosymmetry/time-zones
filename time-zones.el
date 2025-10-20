@@ -292,13 +292,34 @@ Returns a new list sorted chronologically, accounting for date changes."
                  (time2 (string-to-number (format-time-string "%Y%m%d%H%M" time tz2))))
             (< time1 time2)))))
 
+(defun time-zones--format-city (city local-time max-location-width)
+  "Format CITY for display at LOCAL-TIME with MAX-LOCATION-WIDTH padding.
+CITY is an alist with keys: timezone, city, state, country.
+DISPLAY-TIME is the time to display for this city.
+MAX-LOCATION-WIDTH is the width to pad the location field to.
+Returns a formatted string with text properties."
+  (propertize
+   (format (format " %%s %%s  %%s  %%-%ds  %%s\n" max-location-width)
+           (if (or (< (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
+                      (car time-zones-waking-hours))
+                   (>= (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
+                       (cdr time-zones-waking-hours)))
+               "☽" " ")
+           (format-time-string "%H:%M" local-time (map-elt city 'timezone))
+           (or (time-zones--country-flag (map-elt city 'country))
+               time-zones--fallback-flag)
+           (propertize (or (map-elt city 'city) (map-elt city 'state))
+                       'face 'font-lock-builtin-face)
+           (format-time-string "%A %d %B" local-time (map-elt city 'timezone)))
+   'time-zones-timezone city))
+
 (defun time-zones--refresh-display ()
   "Refresh the display of cities and their current times."
   (let* ((inhibit-read-only t)
          (current-line (or (line-number-at-pos) 1))
-         (display-time (time-zones--get-display-time))
+         (local-time (time-zones--get-display-time))
          (title (concat "\n "
-                        (propertize (format-time-string "%H:%M %A %d %B" display-time)
+                        (propertize (format-time-string "%H:%M %A %d %B" local-time)
                                     'face '(:height 1.5))
                         (propertize (cond
                                      ((zerop time-zones--time-offset) "")
@@ -310,7 +331,7 @@ Returns a new list sorted chronologically, accounting for date changes."
     (insert title)
     (when time-zones--city-list
       (let* ((sorted-cities (time-zones--sort-cities-by-time
-                             time-zones--city-list display-time))
+                             time-zones--city-list local-time))
              (max-location-width
               (apply #'max
                      (mapcar (lambda (city)
@@ -320,26 +341,7 @@ Returns a new list sorted chronologically, accounting for date changes."
                                  (length location)))
                              sorted-cities))))
         (dolist (city sorted-cities)
-          (let* ((timezone (map-elt city 'timezone))
-                 (flag (or (time-zones--country-flag (map-elt city 'country))
-                           time-zones--fallback-flag))
-                 (city-name (map-elt city 'city))
-                 (state (map-elt city 'state))
-                 (time-str (format-time-string "%H:%M" display-time timezone))
-                 (hour (string-to-number (format-time-string "%H" display-time timezone)))
-                 (waking-start (car time-zones-waking-hours))
-                 (waking-end (cdr time-zones-waking-hours))
-                 (is-sleeping (or (< hour waking-start) (>= hour waking-end)))
-                 (sleep-indicator (if is-sleeping "☽" " "))
-                 (date-str (format-time-string "%A %d %B" display-time timezone))
-                 (location (or city-name state))
-                 (line-start (point)))
-            (insert (format (format " %%s %%s  %%s  %%-%ds  %%s\n" max-location-width)
-                            sleep-indicator time-str flag
-                            (propertize location
-                                        'face 'font-lock-builtin-face)
-                            date-str))
-            (put-text-property line-start (point) 'time-zones-timezone city)))))
+          (insert (time-zones--format-city city local-time max-location-width)))))
     (unless (seq-empty-p time-zones--city-list)
       (insert "\n"))
     (insert (concat
