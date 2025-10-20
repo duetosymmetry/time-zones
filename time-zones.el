@@ -85,32 +85,32 @@ Uses `completing-read' for selection."
   (time-zones--start-timer)
   (time-zones--refresh-display))
 
-(defun time-zones-time-forward ()
-  "Move time forward by 15 minutes and stop auto-refresh."
-  (interactive)
+(defun time-zones-time-forward (arg)
+  "Move time forward by 15 minutes per ARG (default 1) and stop auto-refresh."
+  (interactive "p")
   (time-zones--stop-timer)
-  (setq time-zones--time-offset (+ time-zones--time-offset (* 15 60)))
+  (setq time-zones--time-offset (+ time-zones--time-offset (* 15 60 arg)))
   (time-zones--refresh-display))
 
-(defun time-zones-time-backward ()
-  "Move time backward by 15 minutes and stop auto-refresh."
-  (interactive)
+(defun time-zones-time-backward (arg)
+  "Move time backward by 15 minutes per ARG (default 1) and stop auto-refresh."
+  (interactive "p")
   (time-zones--stop-timer)
-  (setq time-zones--time-offset (- time-zones--time-offset (* 15 60)))
+  (setq time-zones--time-offset (- time-zones--time-offset (* 15 60 arg)))
   (time-zones--refresh-display))
 
-(defun time-zones-time-forward-hour ()
-  "Move time forward by 1 hour and stop auto-refresh."
-  (interactive)
+(defun time-zones-time-forward-hour (arg)
+  "Move time forward by 1 hour per ARG (default 1) and stop auto-refresh."
+  (interactive "p")
   (time-zones--stop-timer)
-  (setq time-zones--time-offset (+ time-zones--time-offset (* 60 60)))
+  (setq time-zones--time-offset (+ time-zones--time-offset (* 60 60 arg)))
   (time-zones--refresh-display))
 
-(defun time-zones-time-backward-hour ()
-  "Move time backward by 1 hour and stop auto-refresh."
-  (interactive)
+(defun time-zones-time-backward-hour (arg)
+  "Move time backward by 1 hour per ARG (default 1) and stop auto-refresh."
+  (interactive "p")
   (time-zones--stop-timer)
-  (setq time-zones--time-offset (- time-zones--time-offset (* 60 60)))
+  (setq time-zones--time-offset (- time-zones--time-offset (* 60 60 arg)))
   (time-zones--refresh-display))
 
 (defvar time-zones--timezones-url
