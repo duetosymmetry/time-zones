@@ -32,6 +32,32 @@
 
 ;;; Code:
 
+(defcustom time-zones-waking-hours '(6 . 22)
+  "Cons cell defining waking hours as (START . END).
+START is the hour when waking hours begin (default 6 for 6:00 AM).
+END is the hour when waking hours end (default 22 for 10:00 PM).
+Hours outside this range are considered sleeping hours and will
+display a ☽ symbol."
+  :type '(cons (integer :tag "Start hour (0-23)")
+               (integer :tag "End hour (0-23)"))
+  :group 'time-zones)
+
+(defvar time-zones--timezones-cache nil
+  "Cache for downloaded timezone data.")
+
+(defvar time-zones--city-list nil
+  "List of selected cities for display.")
+
+(defvar time-zones--city-list-file
+  (expand-file-name ".time-zones.el" user-emacs-directory)
+  "File path for persisting the city list across sessions.")
+
+(defvar time-zones--refresh-timer nil
+  "Timer for auto-refreshing the display.")
+
+(defvar time-zones--time-offset 0
+  "Manual time offset in seconds.  When non-zero, timer is stopped.")
+
 (defconst time-zones--version "0.1.1"
   "Version of the time-zones package.")
 
@@ -180,29 +206,6 @@ Uses `completing-read' for selection."
     timezones))
 
 ;; Major mode
-
-(defvar time-zones--city-list nil
-  "List of selected cities for display.")
-
-(defvar time-zones--city-list-file
-  (expand-file-name ".time-zones.el" user-emacs-directory)
-  "File path for persisting the city list across sessions.")
-
-(defvar time-zones--refresh-timer nil
-  "Timer for auto-refreshing the display.")
-
-(defvar time-zones--time-offset 0
-  "Manual time offset in seconds.  When non-zero, timer is stopped.")
-
-(defcustom time-zones-waking-hours '(6 . 22)
-  "Cons cell defining waking hours as (START . END).
-START is the hour when waking hours begin (default 6 for 6:00 AM).
-END is the hour when waking hours end (default 22 for 10:00 PM).
-Hours outside this range are considered sleeping hours and will
-display a ☽ symbol."
-  :type '(cons (integer :tag "Start hour (0-23)")
-               (integer :tag "End hour (0-23)"))
-  :group 'time-zones)
 
 (defun time-zones--save-city-list ()
   "Save the city list to file for persistence across sessions."
