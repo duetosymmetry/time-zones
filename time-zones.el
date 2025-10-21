@@ -85,7 +85,7 @@ Each item is an alist containing keys like:
 (defvar time-zones--time-offset 0
   "Manual time offset in seconds.  When non-zero, timer is stopped.")
 
-(defconst time-zones--version "0.2.2"
+(defconst time-zones--version "0.3.1"
   "Version of the `time-zones' package.")
 
 ;;;###autoload
