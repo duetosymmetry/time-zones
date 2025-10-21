@@ -42,6 +42,11 @@ display a ☽ symbol."
                (integer :tag "End hour (0-23)"))
   :group 'time-zones)
 
+(defcustom time-zones-show-details nil
+  "When non-nil, display UTC offset and DST information for each city."
+  :type 'boolean
+  :group 'time-zones)
+
 (defcustom time-zones-custom-timezones
   '(((timezone . "UTC")
      (flag . "🕒")
@@ -185,6 +190,13 @@ Uses `completing-read' for selection."
         (fround (float-time (time-subtract (org-read-date t t) (current-time)))))
   (time-zones--refresh-display))
 
+(defun time-zones-toggle-showing-details ()
+  "Toggle display of UTC offset and DST information."
+  (interactive)
+  (setq time-zones-show-details (not time-zones-show-details))
+  (time-zones--refresh-display)
+  (message "Details %s" (if time-zones-show-details "shown" "hidden")))
+
 (defvar time-zones--timezones-url
   "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/refs/heads/master/json/countries%2Bstates%2Bcities.json.gz"
   "URL for countries, states, and cities database.")
@@ -309,6 +321,7 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
     (define-key map (kbd "F") 'time-zones-time-forward-hour)
     (define-key map (kbd "B") 'time-zones-time-backward-hour)
     (define-key map (kbd "j") 'time-zones-jump-to-date)
+    (define-key map (kbd "(") 'time-zones-toggle-showing-details)
     (define-key map (kbd "n") 'next-line)
     (define-key map (kbd "p") 'previous-line)
     map)
@@ -391,14 +404,21 @@ TIMEZONE is the timezone string (IANA or POSIX format)."
         (format "UTC%s%d" sign hours)
       (format "UTC%s%d:%02d" sign hours minutes))))
 
-(defun time-zones--format-city (city local-time max-location-width)
-  "Format CITY for display at LOCAL-TIME with MAX-LOCATION-WIDTH padding.
-CITY is an alist with keys: timezone, city, state, country.
-DISPLAY-TIME is the time to display for this city.
-MAX-LOCATION-WIDTH is the width to pad the location field to.
-Returns a formatted string with text properties."
+(defun time-zones--is-dst (time timezone)
+  "Check if DST is active for TIMEZONE at TIME.
+Returns \"DST\" if daylight saving time is in effect, empty string otherwise.
+TIME is the time to check.
+TIMEZONE is the timezone string (IANA or POSIX format)."
+  (let* ((decoded (decode-time time timezone))
+         (dst-flag (nth 7 decoded)))
+    (eq dst-flag t)))
+
+(defun time-zones--format-city (city local-time max-location-width max-offset-width)
+  "Format CITY for display.
+
+Consider LOCAL-TIME, MAX-LOCATION-WIDTH, and MAX-OFFSET-WIDTH."
   (propertize
-   (format (format " %%s %%s  %%s  %%-%ds  %%s  %%s\n" max-location-width)
+   (format (format " %%s %%s  %%s  %%-%ds  %%s  %%-%ds %%s\n" max-location-width max-offset-width)
            (if (or (< (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
                       (car time-zones-waking-hours))
                    (>= (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
@@ -413,8 +433,16 @@ Returns a formatted string with text properties."
                            (map-elt city 'timezone))
                        'face 'font-lock-builtin-face)
            (format-time-string "%A %d %B" local-time (map-elt city 'timezone))
-           (propertize (time-zones--format-utc-offset local-time (map-elt city 'timezone))
-                       'face 'shadow))
+           (if time-zones-show-details
+               (propertize (time-zones--format-utc-offset local-time (map-elt city 'timezone))
+                           'face 'shadow)
+             "")
+           (if time-zones-show-details
+               (propertize (if (time-zones--is-dst local-time (map-elt city 'timezone))
+                               "★"
+                             " ")
+                           'face 'shadow)
+             ""))
    'time-zones-timezone city))
 
 (defun time-zones--refresh-display ()
@@ -444,9 +472,14 @@ Returns a formatted string with text properties."
                                       (timezone (map-elt city 'timezone))
                                       (location (or city-name state timezone)))
                                  (length location)))
+                             sorted-cities)))
+             (max-offset-width
+              (apply #'max
+                     (mapcar (lambda (city)
+                               (length (time-zones--format-utc-offset local-time (map-elt city 'timezone))))
                              sorted-cities))))
         (dolist (city sorted-cities)
-          (insert (time-zones--format-city city local-time max-location-width)))))
+          (insert (time-zones--format-city city local-time max-location-width max-offset-width)))))
     (unless (seq-empty-p time-zones--city-list)
       (insert "\n"))
     (insert (concat
