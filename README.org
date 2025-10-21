@@ -25,6 +25,13 @@ Launch =time-zones= with:
 
 Press =+= to add a city.
 
+* Data Sources
+
+This package would not be possible without these data sources:
+
+- Countries, states, and cities database: [[https://github.com/dr5hn/countries-states-cities-database]]
+- POSIX TZ database for Windows timezone support: [[https://github.com/nayarsystems/posix_tz_db]]
+
 * Enjoy
 
 If you enjoy my =time-zones= package or my work, consider [[https://github.com/sponsors/xenodium][sponsoring]] to make it all sustainable.
