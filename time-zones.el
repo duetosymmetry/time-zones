@@ -340,6 +340,8 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
          " backward  "
          (propertize "j" 'face 'help-key-binding)
          " jump  "
+         (propertize "g" 'face 'help-key-binding)
+         " refresh  "
          (propertize "q" 'face 'help-key-binding)
          " quit"))
   (time-zones--load-city-list)
@@ -413,12 +415,12 @@ TIMEZONE is the timezone string (IANA or POSIX format)."
          (dst-flag (nth 7 decoded)))
     (eq dst-flag t)))
 
-(defun time-zones--format-city (city local-time max-location-width max-offset-width)
+(defun time-zones--format-city (city local-time max-location-width max-date-width max-offset-width)
   "Format CITY for display.
 
-Consider LOCAL-TIME, MAX-LOCATION-WIDTH, and MAX-OFFSET-WIDTH."
+Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
   (propertize
-   (format (format " %%s %%s  %%s  %%-%ds  %%s  %%-%ds %%s\n" max-location-width max-offset-width)
+   (format (format " %%s %%s  %%s  %%-%ds  %%-%ds  %%-%ds %%s\n" max-location-width max-date-width max-offset-width)
            (if (or (< (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
                       (car time-zones-waking-hours))
                    (>= (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
@@ -473,13 +475,18 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, and MAX-OFFSET-WIDTH."
                                       (location (or city-name state timezone)))
                                  (length location)))
                              sorted-cities)))
+             (max-date-width
+              (apply #'max
+                     (mapcar (lambda (city)
+                               (length (format-time-string "%A %d %B" local-time (map-elt city 'timezone))))
+                             sorted-cities)))
              (max-offset-width
               (apply #'max
                      (mapcar (lambda (city)
                                (length (time-zones--format-utc-offset local-time (map-elt city 'timezone))))
                              sorted-cities))))
         (dolist (city sorted-cities)
-          (insert (time-zones--format-city city local-time max-location-width max-offset-width)))))
+          (insert (time-zones--format-city city local-time max-location-width max-date-width max-offset-width)))))
     (unless (seq-empty-p time-zones--city-list)
       (insert "\n"))
     (insert (concat
@@ -488,8 +495,8 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, and MAX-OFFSET-WIDTH."
              (propertize " add city  " 'face 'header-line)
              (propertize "D" 'face 'help-key-binding)
              (propertize " delete city  " 'face 'header-line)
-             (propertize "g" 'face 'help-key-binding)
-             (propertize " refresh  " 'face 'header-line)))
+             (propertize "(" 'face 'help-key-binding)
+             (propertize " toggle details  " 'face 'header-line)))
     (fit-window-to-buffer)
     (goto-char (point-min))
     (when (> current-line 1)
