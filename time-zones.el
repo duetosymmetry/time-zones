@@ -100,6 +100,9 @@ Each item is an alist containing keys like:
 (defvar time-zones--city-list nil
   "List of selected cities for display.")
 
+(defvar time-zones--home-city nil
+  "City flagged as home.")
+
 (defvar time-zones--city-list-file
   (expand-file-name ".time-zones.el" user-emacs-directory)
   "File path for persisting the city list across sessions.")
@@ -207,10 +210,30 @@ Uses `completing-read' for selection."
                                  (or (map-elt city-data 'city)
                                      (map-elt city-data 'state)
                                      (map-elt city-data 'timezone)))))
+      (if (equal city-data time-zones--home-city)
+          (setq time-zones--home-city nil))
       (setq time-zones--city-list
             (seq-remove (lambda (city) (equal city city-data)) time-zones--city-list))
       (time-zones--save-city-list)
       (time-zones--refresh-display))))
+
+(defun time-zones-mark-home-at-point ()
+  "Mark the city at point as home."
+  (interactive)
+  (let ((city-data (get-text-property (point) 'time-zones-timezone)))
+    (if city-data
+        (if (equal city-data time-zones--home-city)
+            (when (y-or-n-p "Clear home city?")
+              (setq time-zones--home-city nil)
+              (time-zones--save-city-list)
+              (time-zones--refresh-display))
+          (when (y-or-n-p (format "Set home to %s? "
+                                  (or (map-elt city-data 'city)
+                                      (map-elt city-data 'state)
+                                      (map-elt city-data 'timezone))))
+            (setq time-zones--home-city city-data)
+            (time-zones--save-city-list)
+            (time-zones--refresh-display))))))
 
 (defun time-zones-refresh ()
   "Refresh the timezone display and restart live update."
@@ -371,7 +394,12 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
     (insert "(setq time-zones--city-list\n")
     (insert "      '")
     (prin1 time-zones--city-list (current-buffer))
-    (insert ")\n")))
+    (insert ")\n")
+    (insert "(setq time-zones--home-city\n")
+    (insert "      '")
+    (prin1 time-zones--home-city (current-buffer))
+    (insert ")\n")
+    ))
 
 (defun time-zones--load-city-list ()
   "Load the city list from file if it exists."
@@ -385,6 +413,7 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "+") 'time-zones-add-city)
     (define-key map (kbd "D") 'time-zones-delete-city-at-point)
+    (define-key map (kbd "h") 'time-zones-mark-home-at-point)
     (define-key map (kbd "r") 'time-zones-refresh)
     (define-key map (kbd "g") 'time-zones-refresh)
     (define-key map (kbd "f") 'time-zones-time-forward)
@@ -492,7 +521,8 @@ TIMEZONE is the timezone string (IANA or POSIX format)."
 
 Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
   (propertize
-   (format (format "  %%s %%s  %%s  %%-%ds  %%-%ds  %%-%ds %%s\n" max-location-width max-date-width max-offset-width)
+   (format (format "  %%s %%s %%s  %%s  %%-%ds  %%-%ds  %%-%ds %%s\n" max-location-width max-date-width max-offset-width)
+           (if (equal city time-zones--home-city) "⌂" " ")
            (if (or (< (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
                       (car time-zones-waking-hours))
                    (>= (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
