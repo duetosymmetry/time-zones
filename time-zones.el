@@ -378,6 +378,19 @@ Returns a new list sorted chronologically, accounting for date changes."
                  (time2 (string-to-number (format-time-string "%Y%m%d%H%M" time (map-elt city2 'timezone)))))
             (< time1 time2)))))
 
+(defun time-zones--format-utc-offset (time timezone)
+  "Format UTC offset for TIMEZONE at TIME as a string like `UTC-6' or `UTC+5:30'.
+TIME is the time to check the offset for (to handle DST correctly).
+TIMEZONE is the timezone string (IANA or POSIX format)."
+  (let* ((offset-string (format-time-string "%z" time timezone))
+         ;; offset-string is like "-0600" or "+0530"
+         (sign (substring offset-string 0 1))
+         (hours (string-to-number (substring offset-string 1 3)))
+         (minutes (string-to-number (substring offset-string 3 5))))
+    (if (zerop minutes)
+        (format "UTC%s%d" sign hours)
+      (format "UTC%s%d:%02d" sign hours minutes))))
+
 (defun time-zones--format-city (city local-time max-location-width)
   "Format CITY for display at LOCAL-TIME with MAX-LOCATION-WIDTH padding.
 CITY is an alist with keys: timezone, city, state, country.
@@ -385,7 +398,7 @@ DISPLAY-TIME is the time to display for this city.
 MAX-LOCATION-WIDTH is the width to pad the location field to.
 Returns a formatted string with text properties."
   (propertize
-   (format (format " %%s %%s  %%s  %%-%ds  %%s\n" max-location-width)
+   (format (format " %%s %%s  %%s  %%-%ds  %%s  %%s\n" max-location-width)
            (if (or (< (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
                       (car time-zones-waking-hours))
                    (>= (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
@@ -399,7 +412,9 @@ Returns a formatted string with text properties."
                            (map-elt city 'state)
                            (map-elt city 'timezone))
                        'face 'font-lock-builtin-face)
-           (format-time-string "%A %d %B" local-time (map-elt city 'timezone)))
+           (format-time-string "%A %d %B" local-time (map-elt city 'timezone))
+           (propertize (time-zones--format-utc-offset local-time (map-elt city 'timezone))
+                       'face 'shadow))
    'time-zones-timezone city))
 
 (defun time-zones--refresh-display ()
