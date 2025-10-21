@@ -40,6 +40,13 @@
 
 ;;; Code:
 
+;; Declare functions which are defined elsewhere.
+;; org-read-date is only needed for time-zones-jump-to-date,
+;; which has the require for org within it to avoid a slow load
+(declare-function org-read-date "org"
+                  (&optional with-time to-time from-string prompt
+                             default-time default-input inactive))
+
 (defcustom time-zones-waking-hours '(6 . 22)
   "Cons cell defining waking hours as (START . END).
 START is the hour when waking hours begin (default 6 for 6:00 AM).
