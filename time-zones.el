@@ -47,10 +47,9 @@ display a ☽ symbol."
      (flag . "🕒")
      (latitude . "0")
      (longitude . "0")))
-  "List of additional time zones to pick from
-each as an alist.
+  "List of additional time zones to pick from.
 
-Each alist contains optional keys like:
+Each item is an alist containing keys like:
 
  `((timezone . \"UTC\")
    (country . ...)
@@ -86,8 +85,8 @@ Each alist contains optional keys like:
 (defvar time-zones--time-offset 0
   "Manual time offset in seconds.  When non-zero, timer is stopped.")
 
-(defconst time-zones--version "0.1.1"
-  "Version of the time-zones package.")
+(defconst time-zones--version "0.2.1"
+  "Version of the `time-zones' package.")
 
 ;;;###autoload
 (defun time-zones ()
@@ -102,7 +101,7 @@ Each alist contains optional keys like:
 
 ;;;###autoload
 (defun time-zones-version ()
-  "Display the version of the time-zones package in the minibuffer."
+  "Display the version of the `time-zones' package in the minibuffer."
   (interactive)
   (message "time-zones version %s" time-zones--version))
 
@@ -193,7 +192,26 @@ Uses `completing-read' for selection."
 (defvar time-zones--timezones-cache nil
   "Cache for downloaded timezone data.")
 
+(defvar time-zones--posix-tz-url
+  "https://raw.githubusercontent.com/nayarsystems/posix_tz_db/master/zones.json"
+  "URL for IANA to POSIX TZ mappings database.")
+
+(defvar time-zones--posix-tz-cache nil
+  "Cache for downloaded POSIX TZ mapping data.")
+
 (defconst time-zones--fallback-flag "🏴")
+
+(defun time-zones--fetch-posix-tz-mappings ()
+  "Download and parse the IANA to POSIX TZ mappings JSON data.
+Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
+  (let ((url-mime-charset-string "utf-8")
+        (url-automatic-caching nil)
+        (data-buffer (url-retrieve-synchronously time-zones--posix-tz-url)))
+    (with-current-buffer data-buffer
+      (goto-char (point-min))
+      (search-forward "\n\n")
+      (let ((json-object-type 'alist))
+        (json-read)))))
 
 (defun time-zones--fetch-timezones ()
   "Download and parse the countries+states+cities JSON data."
@@ -356,8 +374,8 @@ Uses `completing-read' for selection."
 Returns a new list sorted chronologically, accounting for date changes."
   (sort (copy-sequence cities)
         (lambda (city1 city2)
-          (let* ((tz1 (map-elt city1 'timezone))
-                 (tz2 (map-elt city2 'timezone))
+          (let* ((tz1 (time-zones--resolve-timezone (map-elt city1 'timezone)))
+                 (tz2 (time-zones--resolve-timezone (map-elt city2 'timezone)))
                  (time1 (string-to-number (format-time-string "%Y%m%d%H%M" time tz1)))
                  (time2 (string-to-number (format-time-string "%Y%m%d%H%M" time tz2))))
             (< time1 time2)))))
@@ -368,23 +386,24 @@ CITY is an alist with keys: timezone, city, state, country.
 DISPLAY-TIME is the time to display for this city.
 MAX-LOCATION-WIDTH is the width to pad the location field to.
 Returns a formatted string with text properties."
-  (propertize
-   (format (format " %%s %%s  %%s  %%-%ds  %%s\n" max-location-width)
-           (if (or (< (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
-                      (car time-zones-waking-hours))
-                   (>= (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
-                       (cdr time-zones-waking-hours)))
-               "☽" " ")
-           (format-time-string "%H:%M" local-time (map-elt city 'timezone))
-           (or (map-elt city 'flag)
-               (time-zones--country-flag (map-elt city 'country))
-               time-zones--fallback-flag)
-           (propertize (or (map-elt city 'city)
-                           (map-elt city 'state)
-                           (map-elt city 'timezone))
-                       'face 'font-lock-builtin-face)
-           (format-time-string "%A %d %B" local-time (map-elt city 'timezone)))
-   'time-zones-timezone city))
+  (let ((tz (time-zones--resolve-timezone (map-elt city 'timezone))))
+    (propertize
+     (format (format " %%s %%s  %%s  %%-%ds  %%s\n" max-location-width)
+             (if (or (< (string-to-number (format-time-string "%H" local-time tz))
+                        (car time-zones-waking-hours))
+                     (>= (string-to-number (format-time-string "%H" local-time tz))
+                         (cdr time-zones-waking-hours)))
+                 "☽" " ")
+             (format-time-string "%H:%M" local-time tz)
+             (or (map-elt city 'flag)
+                 (time-zones--country-flag (map-elt city 'country))
+                 time-zones--fallback-flag)
+             (propertize (or (map-elt city 'city)
+                             (map-elt city 'state)
+                             (map-elt city 'timezone))
+                         'face 'font-lock-builtin-face)
+             (format-time-string "%A %d %B" local-time tz))
+     'time-zones-timezone city)))
 
 (defun time-zones--refresh-display ()
   "Refresh the display of cities and their current times."
@@ -430,6 +449,19 @@ Returns a formatted string with text properties."
     (goto-char (point-min))
     (when (> current-line 1)
       (forward-line (1- current-line)))))
+
+(defun time-zones--resolve-timezone (iana-tz)
+  "Convert IANA-TZ to a format suitable for the current platform.
+On Windows, converts to POSIX TZ format by downloading mappings from
+https://github.com/nayarsystems/posix_tz_db.  On other platforms,
+returns IANA-TZ as-is."
+  (if (eq system-type 'windows-nt)
+      (let ((mappings (or time-zones--posix-tz-cache
+                          (setq time-zones--posix-tz-cache
+                                (time-zones--fetch-posix-tz-mappings)))))
+        (or (map-elt mappings (intern iana-tz))
+            iana-tz))  ; Fallback to IANA if no mapping found
+    iana-tz))
 
 (defun time-zones--country-flag (country-name)
   "Get the flag emoji for COUNTRY-NAME."
