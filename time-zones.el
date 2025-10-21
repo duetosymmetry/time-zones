@@ -42,6 +42,34 @@ display a ☽ symbol."
                (integer :tag "End hour (0-23)"))
   :group 'time-zones)
 
+(defcustom time-zones-custom-timezones
+  '(((timezone . "UTC")
+     (flag . "🕒")
+     (latitude . "0")
+     (longitude . "0")))
+  "List of additional time zones to pick from
+each as an alist.
+
+Each alist contains optional keys like:
+
+ `((timezone . \"UTC\")
+   (country . ...)
+   (state . ...)
+   (city . ...)
+   (flag . \"🕒\")
+   (latitude . \"0\")
+   (longitude . \"0\"))."
+  :group 'time-zones
+  :type '(repeat
+          (alist :key-type (choice (const country)
+                                   (const state)
+                                   (const city)
+                                   (const timezone)
+                                   (const latitude)
+                                   (const longitude)
+                                   (const flag))
+                 :value-type string)))
+
 (defvar time-zones--timezones-cache nil
   "Cache for downloaded timezone data.")
 
@@ -87,10 +115,10 @@ Uses `completing-read' for selection."
   (redisplay)
   (let* ((data (or time-zones--timezones-cache
                    (setq time-zones--timezones-cache (time-zones--fetch-timezones))))
-         (timezone-map (time-zones--extract-timezones data))
-         (display-list (sort (map-keys timezone-map) #'string<))
+         (timezones (time-zones--extract-timezones data))
+         (display-list (sort (map-keys timezones) #'string<))
          (selected (completing-read "Select timezone: " display-list nil t)))
-    (map-elt timezone-map selected)))
+    (map-elt timezones selected)))
 
 (defun time-zones-add-city ()
   "Add a city to the timezone display."
@@ -108,7 +136,8 @@ Uses `completing-read' for selection."
     (when (and city-data
                (y-or-n-p (format "Delete %s? "
                                  (or (map-elt city-data 'city)
-                                     (map-elt city-data 'state)))))
+                                     (map-elt city-data 'state)
+                                     (map-elt city-data 'timezone)))))
       (setq time-zones--city-list
             (seq-remove (lambda (city) (equal city city-data)) time-zones--city-list))
       (time-zones--save-city-list)
@@ -196,6 +225,23 @@ Uses `completing-read' for selection."
 (defun time-zones--extract-timezones (data)
   "Extract unique timezones from the downloaded DATA, returning a hash table."
   (let ((timezones (make-hash-table :test 'equal)))
+    (seq-doseq (timezone time-zones-custom-timezones)
+      (puthash (format "%s %s"
+                       (or (map-elt timezone 'flag)
+                           (time-zones--country-flag (map-elt timezone 'timezone))
+                           time-zones--fallback-flag)
+                       (or (map-elt timezone 'city)
+                           (map-elt timezone 'state)
+                           (map-elt timezone 'country)
+                           (map-elt timezone 'timezone)))
+               `((country . ,(map-elt timezone 'country))
+                 (state . ,(map-elt timezone 'state))
+                 (city . ,(map-elt timezone 'city))
+                 (timezone . ,(map-elt timezone 'timezone))
+                 (latitude . ,(map-elt timezone 'latitude))
+                 (longitude . ,(map-elt timezone 'longitude))
+                 (flag . ,(map-elt timezone 'flag)))
+               timezones))
     (seq-doseq (country data)
       (seq-doseq (state (map-elt country 'states))
         (seq-doseq (city (map-elt state 'cities))
@@ -330,9 +376,12 @@ Returns a formatted string with text properties."
                        (cdr time-zones-waking-hours)))
                "☽" " ")
            (format-time-string "%H:%M" local-time (map-elt city 'timezone))
-           (or (time-zones--country-flag (map-elt city 'country))
+           (or (map-elt city 'flag)
+               (time-zones--country-flag (map-elt city 'country))
                time-zones--fallback-flag)
-           (propertize (or (map-elt city 'city) (map-elt city 'state))
+           (propertize (or (map-elt city 'city)
+                           (map-elt city 'state)
+                           (map-elt city 'timezone))
                        'face 'font-lock-builtin-face)
            (format-time-string "%A %d %B" local-time (map-elt city 'timezone)))
    'time-zones-timezone city))
@@ -361,7 +410,8 @@ Returns a formatted string with text properties."
                      (mapcar (lambda (city)
                                (let* ((city-name (map-elt city 'city))
                                       (state (map-elt city 'state))
-                                      (location (or city-name state)))
+                                      (timezone (map-elt city 'timezone))
+                                      (location (or city-name state timezone)))
                                  (length location)))
                              sorted-cities))))
         (dolist (city sorted-cities)
