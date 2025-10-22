@@ -1,11 +1,11 @@
-;;; time-zones.el --- time zone lookups  -*- lexical-binding: t; -*-
+;;; time-zones.el --- Time zone lookups  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2024 Alvaro Ramirez
 
 ;; Author: Alvaro Ramirez https://xenodium.com
+;; Package-Requires: ((emacs "28.1"))
 ;; URL: https://github.com/xenodium/time-zones
 ;; Version: 0.3.2
-;; Package-Requires: ((emacs "29.1"))
 
 ;; This package is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -167,7 +167,7 @@ Ignores time-zones interactive commands to keep cursor hidden."
   (interactive)
   (let ((buffer (get-buffer-create "*time zones*")))
     (with-current-buffer buffer
-      (unless (eq major-mode 'time-zones-mode)
+      (unless (derived-mode-p 'time-zones-mode)
         (time-zones-mode)))
     (pop-to-buffer buffer)
     (when-let ((window (get-buffer-window "*time zones*" t))
@@ -391,7 +391,7 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
 (defun time-zones--save-city-list ()
   "Save the city list to file for persistence across sessions."
   (with-temp-file time-zones--city-list-file
-    (insert ";;; Saved time-zones city list -*- lexical-binding: t; -*-\n")
+    (insert ";;; Saved time-zones city list\n")
     (insert ";; This file is auto-generated. Do not edit manually.\n\n")
     (insert "(setq time-zones--city-list\n")
     (insert "      '")
@@ -400,8 +400,7 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
     (insert "(setq time-zones--home-city\n")
     (insert "      '")
     (prin1 time-zones--home-city (current-buffer))
-    (insert ")\n")
-    ))
+    (insert ")\n")))
 
 (defun time-zones--load-city-list ()
   "Load the city list from file if it exists."
@@ -437,7 +436,7 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
 \\{time-zones-mode-map}"
   (time-zones--load-city-list)
   (time-zones--start-timer)
-  (add-hook 'kill-buffer-hook 'time-zones--stop-timer nil t)
+  (add-hook 'kill-buffer-hook #'time-zones--stop-timer nil t)
 
   ;; Set up auto-hide cursor
   (make-local-variable 'time-zones--cursor-timer)
@@ -445,7 +444,7 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
   (make-local-variable 'time-zones--cursor-original-type)
   (setq time-zones--cursor-original-type cursor-type)
   (add-hook 'pre-command-hook #'time-zones--cursor-show nil t)
-  (add-hook 'kill-buffer-hook 'time-zones--cursor-cleanup nil t)
+  (add-hook 'kill-buffer-hook #'time-zones--cursor-cleanup nil t)
 
   ;; Start with cursor hidden
   (setq cursor-type nil)
@@ -556,7 +555,7 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
                    (>= (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
                        (cdr time-zones-waking-hours)))
                "☽" " ")
-           (format-time-string "%H:%M" local-time (map-elt city 'timezone))
+           (format-time-string "%R" local-time (map-elt city 'timezone))
            (or (map-elt city 'flag)
                (time-zones--country-flag (map-elt city 'country))
                time-zones--fallback-flag)
@@ -583,7 +582,7 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
          (current-line (or (line-number-at-pos) 1))
          (local-time (time-zones--get-display-time))
          (title (concat "\n  "
-                        (propertize (format-time-string "%H:%M %A %d %B" local-time)
+                        (propertize (format-time-string "%R %A %d %B" local-time)
                                     'face '(:height 1.5))
                         (propertize (cond
                                      ((zerop time-zones--time-offset) "")
@@ -637,18 +636,17 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
       (insert "\n"))
     (if time-zones-show-help
         (progn
-          (insert (concat
-                   "  "
-                   (propertize "f" 'face 'help-key-binding)
-                   (propertize " forward  " 'face 'header-line)
-                   (propertize "b" 'face 'help-key-binding)
-                   (propertize " backward  " 'face 'header-line)
-                   (propertize "j" 'face 'help-key-binding)
-                   (propertize " jump  " 'face 'header-line)
-                   (propertize "g" 'face 'help-key-binding)
-                   (propertize " refresh  " 'face 'header-line)
-                   (propertize "q" 'face 'help-key-binding)
-                   (propertize " quit  " 'face 'header-line)))
+          (insert "  "
+                  (propertize "f" 'face 'help-key-binding)
+                  (propertize " forward  " 'face 'header-line)
+                  (propertize "b" 'face 'help-key-binding)
+                  (propertize " backward  " 'face 'header-line)
+                  (propertize "j" 'face 'help-key-binding)
+                  (propertize " jump  " 'face 'header-line)
+                  (propertize "g" 'face 'help-key-binding)
+                  (propertize " refresh  " 'face 'header-line)
+                  (propertize "q" 'face 'help-key-binding)
+                  (propertize " quit  " 'face 'header-line))
           (insert "\n\n ")))
     (insert "\n\n\n ")
     (when-let ((window (get-buffer-window "*time zones*" t))
