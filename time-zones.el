@@ -439,7 +439,7 @@ TIMEZONE is the timezone string (IANA or POSIX format)."
 
 Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
   (propertize
-   (format (format " %%s %%s  %%s  %%-%ds  %%-%ds  %%-%ds %%s\n" max-location-width max-date-width max-offset-width)
+   (format (format "  %%s %%s  %%s  %%-%ds  %%-%ds  %%-%ds %%s\n" max-location-width max-date-width max-offset-width)
            (if (or (< (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
                       (car time-zones-waking-hours))
                    (>= (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
@@ -471,7 +471,7 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
   (let* ((inhibit-read-only t)
          (current-line (or (line-number-at-pos) 1))
          (local-time (time-zones--get-display-time))
-         (title (concat "\n "
+         (title (concat "\n  "
                         (propertize (format-time-string "%H:%M %A %d %B" local-time)
                                     'face '(:height 1.5))
                         (propertize (cond
@@ -484,7 +484,7 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
     (setq header-line-format
           (when time-zones-show-help
             (concat
-             "  "
+             "   "
              (propertize "+" 'face 'help-key-binding)
              " add city  "
              (propertize "D" 'face 'help-key-binding)
@@ -523,7 +523,7 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
     (if time-zones-show-help
         (progn
           (insert (concat
-                   " "
+                   "  "
                    (propertize "f" 'face 'help-key-binding)
                    (propertize " forward  " 'face 'header-line)
                    (propertize "b" 'face 'help-key-binding)
