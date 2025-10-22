@@ -129,19 +129,22 @@ Each item is an alist containing keys like:
     (setq cursor-type nil)))
 
 (defun time-zones--cursor-show ()
-  "Show the cursor and reset timer."
-  (when time-zones--cursor-hidden
-    (setq time-zones--cursor-hidden nil)
-    (setq cursor-type time-zones--cursor-original-type))
-  (when time-zones--cursor-timer
-    (cancel-timer time-zones--cursor-timer))
-  (let ((buffer (current-buffer)))
-    (setq time-zones--cursor-timer
-          (run-with-timer 4 nil
-                          (lambda ()
-                            (when (buffer-live-p buffer)
-                              (with-current-buffer buffer
-                                (time-zones--cursor-hide))))))))
+  "Show the cursor and reset timer.
+Ignores time-zones interactive commands to keep cursor hidden."
+  (unless (and (symbolp this-command)
+               (string-prefix-p "time-zones-" (symbol-name this-command)))
+    (when time-zones--cursor-hidden
+      (setq time-zones--cursor-hidden nil)
+      (setq cursor-type time-zones--cursor-original-type))
+    (when time-zones--cursor-timer
+      (cancel-timer time-zones--cursor-timer))
+    (let ((buffer (current-buffer)))
+      (setq time-zones--cursor-timer
+            (run-with-timer 4 nil
+                            (lambda ()
+                              (when (buffer-live-p buffer)
+                                (with-current-buffer buffer
+                                  (time-zones--cursor-hide)))))))))
 
 (defun time-zones--cursor-cleanup ()
   "Clean up cursor hiding when buffer is killed."
@@ -256,16 +259,14 @@ Uses `completing-read' for selection."
   "Toggle display of UTC offset and DST information."
   (interactive)
   (setq time-zones-show-details (not time-zones-show-details))
-  (time-zones--refresh-display)
-  (message "Details %s" (if time-zones-show-details "shown" "hidden")))
+  (time-zones--refresh-display))
 
 (defun time-zones-toggle-showing-help ()
   "Toggle display of header and bottom help text."
   (interactive)
   (setq time-zones-show-help (not time-zones-show-help))
   ;; (time-zones-mode)
-  (time-zones--refresh-display)
-  (message "Help %s" (if time-zones-show-help "shown" "hidden")))
+  (time-zones--refresh-display))
 
 (defvar time-zones--timezones-url
   "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/refs/heads/master/json/countries%2Bstates%2Bcities.json.gz"
