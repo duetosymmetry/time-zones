@@ -565,10 +565,12 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
                                (length (format-time-string "%A %d %B" local-time (map-elt city 'timezone))))
                              sorted-cities)))
              (max-offset-width
-              (apply #'max
-                     (mapcar (lambda (city)
-                               (length (time-zones--format-utc-offset local-time (map-elt city 'timezone))))
-                             sorted-cities))))
+              (if time-zones-show-details
+                  (apply #'max
+                         (mapcar (lambda (city)
+                                   (length (time-zones--format-utc-offset local-time (map-elt city 'timezone))))
+                                 sorted-cities))
+                0)))
         (dolist (city sorted-cities)
           (insert (time-zones--format-city city local-time max-location-width max-date-width max-offset-width)))))
     (unless (seq-empty-p time-zones--city-list)
