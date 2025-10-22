@@ -102,6 +102,9 @@ Each item is an alist containing keys like:
 (defvar time-zones--city-list nil
   "List of selected cities for display.")
 
+(defvar time-zones--home-city nil
+  "City flagged as home.")
+
 (defvar time-zones--city-list-file
   (expand-file-name ".time-zones.el" user-emacs-directory)
   "File path for persisting the city list across sessions.")
@@ -209,10 +212,30 @@ Uses `completing-read' for selection."
                                  (or (map-elt city-data 'city)
                                      (map-elt city-data 'state)
                                      (map-elt city-data 'timezone)))))
+      (if (equal city-data time-zones--home-city)
+          (setq time-zones--home-city nil))
       (setq time-zones--city-list
             (seq-remove (lambda (city) (equal city city-data)) time-zones--city-list))
       (time-zones--save-city-list)
       (time-zones--refresh-display))))
+
+(defun time-zones-mark-home-at-point ()
+  "Mark the city at point as home."
+  (interactive)
+  (let ((city-data (get-text-property (point) 'time-zones-timezone)))
+    (if city-data
+        (if (equal city-data time-zones--home-city)
+            (when (y-or-n-p "Clear home city?")
+              (setq time-zones--home-city nil)
+              (time-zones--save-city-list)
+              (time-zones--refresh-display))
+          (when (y-or-n-p (format "Set home to %s? "
+                                  (or (map-elt city-data 'city)
+                                      (map-elt city-data 'state)
+                                      (map-elt city-data 'timezone))))
+            (setq time-zones--home-city city-data)
+            (time-zones--save-city-list)
+            (time-zones--refresh-display))))))
 
 (defun time-zones-refresh ()
   "Refresh the timezone display and restart live update."
@@ -373,7 +396,12 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
     (insert "(setq time-zones--city-list\n")
     (insert "      '")
     (prin1 time-zones--city-list (current-buffer))
-    (insert ")\n")))
+    (insert ")\n")
+    (insert "(setq time-zones--home-city\n")
+    (insert "      '")
+    (prin1 time-zones--home-city (current-buffer))
+    (insert ")\n")
+    ))
 
 (defun time-zones--load-city-list ()
   "Load the city list from file if it exists."
@@ -387,6 +415,7 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "+") 'time-zones-add-city)
     (define-key map (kbd "D") 'time-zones-delete-city-at-point)
+    (define-key map (kbd "h") 'time-zones-mark-home-at-point)
     (define-key map (kbd "r") 'time-zones-refresh)
     (define-key map (kbd "g") 'time-zones-refresh)
     (define-key map (kbd "f") 'time-zones-time-forward)
@@ -480,6 +509,32 @@ TIMEZONE is the timezone string (IANA or POSIX format)."
         (format "UTC%s%d" sign hours)
       (format "UTC%s%d:%02d" sign hours minutes))))
 
+(defun time-zones--format-home-offset (time timezone)
+  "Format offset from home for TIMEZONE at TIME as a string like `-6' or `+5:30'.
+TIME is the time to check the offset for (to handle DST correctly).
+TIMEZONE is the timezone string (IANA or POSIX format)."
+  (if time-zones--home-city
+      (let* ((offset-minutes
+              (/ (- (car (current-time-zone time timezone))
+                    (car (current-time-zone time (map-elt time-zones--home-city 'timezone))))
+                 60))
+             (sign (if (< offset-minutes 0) "" "+"))
+             (hours (/ offset-minutes 60))
+             (minutes (mod offset-minutes 60)))
+        (if (zerop minutes)
+            (format "%s%d" sign hours)
+          (format "%s%d:%02d" sign hours minutes)))
+    ""))
+
+(defun time-zones--format-utc-or-home-offset (time timezone)
+  "Format either UTC offset or home offset for TIMEZONE at TIME.
+Uses TIME-ZONES--FORMAT-UTC-OFFSET or TIME-ZONES--FORMAT-HOME-OFFSET.
+TIME is the time to check the offset for (to handle DST correctly).
+TIMEZONE is the timezone string (IANA or POSIX format)."
+  (if time-zones--home-city
+      (time-zones--format-home-offset time timezone)
+    (time-zones--format-utc-offset time timezone)))
+
 (defun time-zones--is-dst (time timezone)
   "Check if DST is active for TIMEZONE at TIME.
 Returns \"DST\" if daylight saving time is in effect, empty string otherwise.
@@ -494,7 +549,8 @@ TIMEZONE is the timezone string (IANA or POSIX format)."
 
 Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
   (propertize
-   (format (format "  %%s %%s  %%s  %%-%ds  %%-%ds  %%-%ds %%s\n" max-location-width max-date-width max-offset-width)
+   (format (format "  %%s %%s %%s  %%s  %%-%ds  %%-%ds  %%-%ds %%s\n" max-location-width max-date-width max-offset-width)
+           (if (equal city time-zones--home-city) "⌂" " ")
            (if (or (< (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
                       (car time-zones-waking-hours))
                    (>= (string-to-number (format-time-string "%H" local-time (map-elt city 'timezone)))
@@ -510,7 +566,7 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
                        'face 'font-lock-builtin-face)
            (format-time-string "%A %d %B" local-time (map-elt city 'timezone))
            (if time-zones-show-details
-               (propertize (time-zones--format-utc-offset local-time (map-elt city 'timezone))
+               (propertize (time-zones--format-utc-or-home-offset local-time (map-elt city 'timezone))
                            'face 'shadow)
              "")
            (if time-zones-show-details
@@ -544,6 +600,8 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
              " add city  "
              (propertize "D" 'face 'help-key-binding)
              " delete city  "
+             (propertize "h" 'face 'help-key-binding)
+             " mark home  "
              (propertize "(" 'face 'help-key-binding)
              " details  "
              (propertize "?" 'face 'help-key-binding)
@@ -570,7 +628,7 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
               (if time-zones-show-details
                   (apply #'max
                          (mapcar (lambda (city)
-                                   (length (time-zones--format-utc-offset local-time (map-elt city 'timezone))))
+                                   (length (time-zones--format-utc-or-home-offset local-time (map-elt city 'timezone))))
                                  sorted-cities))
                 0)))
         (dolist (city sorted-cities)
