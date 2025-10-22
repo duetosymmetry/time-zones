@@ -1,6 +1,6 @@
 #+TITLE: Time Zones
 #+AUTHOR: Álvaro Ramírez
-👉 [[https://github.com/sponsors/xenodium][Support this work via GitHub Sponsors]]
+👉 [[https://github.com/sponsors/xenodium][Support this work via GitHub Sponsors]] by [[https://github.com/xenodium][@xenodium]] (check out my [[https://xenodium.com][blog]])
 
 [[file:time-zones.png]]
 
