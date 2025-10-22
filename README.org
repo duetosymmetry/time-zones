@@ -2,13 +2,25 @@
 #+AUTHOR: Álvaro Ramírez
 👉 [[https://github.com/sponsors/xenodium][Support this work via GitHub Sponsors]]
 
-[[file:time-zones.gif]]
+[[file:time-zones.png]]
 
 * Time Zones
 
-A major mode to view the time at any city across the world.
+A lovely major mode to view city times across the world.
 
 Launch =time-zones= with:
+
+** Toggle help
+
+[[file:toggle-help.gif]]
+
+** Toggle details (UTC offset + DST)
+
+[[file:toogle-details.gif]]
+
+** Add a city
+
+[[file:add-city.gif]]
 
 * Install
 
