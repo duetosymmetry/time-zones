@@ -98,7 +98,7 @@ Each item is an alist containing keys like:
 (defvar time-zones--time-offset 0
   "Manual time offset in seconds.  When non-zero, timer is stopped.")
 
-(defconst time-zones--version "0.3.1"
+(defconst time-zones--version "0.3.2"
   "Version of the `time-zones' package.")
 
 ;;;###autoload
@@ -110,7 +110,8 @@ Each item is an alist containing keys like:
       (unless (eq major-mode 'time-zones-mode)
         (time-zones-mode)))
     (pop-to-buffer buffer)
-    (fit-window-to-buffer)))
+    (when-let ((window (get-buffer-window "*time zones*" t)))
+      (fit-window-to-buffer window))))
 
 ;;;###autoload
 (defun time-zones-version ()
@@ -332,6 +333,7 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
     (define-key map (kbd "(") 'time-zones-toggle-showing-details)
     (define-key map (kbd "n") 'next-line)
     (define-key map (kbd "p") 'previous-line)
+    (define-key map (kbd "q") 'kill-buffer-and-window)
     map)
   "Keymap for `time-zones-mode'.")
 
@@ -505,7 +507,8 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
              (propertize " delete city  " 'face 'header-line)
              (propertize "(" 'face 'help-key-binding)
              (propertize " toggle details  " 'face 'header-line)))
-    (fit-window-to-buffer)
+    (when-let ((window (get-buffer-window "*time zones*" t)))
+      (fit-window-to-buffer window))
     (goto-char (point-min))
     (when (> current-line 1)
       (forward-line (1- current-line)))))
