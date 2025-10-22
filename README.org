@@ -22,6 +22,12 @@ Launch =time-zones= with:
 
 [[file:add-city.gif]]
 
+** OS supported
+
+- macOS
+- GNU/Linux
+- Windows
+
 * Install
 
 #+begin_src emacs-lisp :lexical no
