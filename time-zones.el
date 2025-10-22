@@ -62,6 +62,11 @@ display a ☽ symbol."
   :type 'boolean
   :group 'time-zones)
 
+(defcustom time-zones-show-help t
+  "When non-nil, display header and bottom help text."
+  :type 'boolean
+  :group 'time-zones)
+
 (defcustom time-zones-custom-timezones
   '(((timezone . "UTC")
      (flag . "🕒")
@@ -117,8 +122,9 @@ Each item is an alist containing keys like:
       (unless (eq major-mode 'time-zones-mode)
         (time-zones-mode)))
     (pop-to-buffer buffer)
-    (when-let ((window (get-buffer-window "*time zones*" t)))
-      (fit-window-to-buffer window))))
+    (when-let ((window (get-buffer-window "*time zones*" t))
+               (height (count-lines (point-min) (point-max))))
+      (fit-window-to-buffer window height height))))
 
 ;;;###autoload
 (defun time-zones-version ()
@@ -212,6 +218,14 @@ Uses `completing-read' for selection."
   (setq time-zones-show-details (not time-zones-show-details))
   (time-zones--refresh-display)
   (message "Details %s" (if time-zones-show-details "shown" "hidden")))
+
+(defun time-zones-toggle-showing-help ()
+  "Toggle display of header and bottom help text."
+  (interactive)
+  (setq time-zones-show-help (not time-zones-show-help))
+  ;; (time-zones-mode)
+  (time-zones--refresh-display)
+  (message "Help %s" (if time-zones-show-help "shown" "hidden")))
 
 (defvar time-zones--timezones-url
   "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/refs/heads/master/json/countries%2Bstates%2Bcities.json.gz"
@@ -338,6 +352,7 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
     (define-key map (kbd "B") 'time-zones-time-backward-hour)
     (define-key map (kbd "j") 'time-zones-jump-to-date)
     (define-key map (kbd "(") 'time-zones-toggle-showing-details)
+    (define-key map (kbd "?") 'time-zones-toggle-showing-help)
     (define-key map (kbd "n") 'next-line)
     (define-key map (kbd "p") 'previous-line)
     (define-key map (kbd "q") 'kill-buffer-and-window)
@@ -348,19 +363,6 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
   "Major mode for displaying and managing timezones.
 
 \\{time-zones-mode-map}"
-  (setq header-line-format
-        (concat
-         "  "
-         (propertize "f" 'face 'help-key-binding)
-         " forward  "
-         (propertize "b" 'face 'help-key-binding)
-         " backward  "
-         (propertize "j" 'face 'help-key-binding)
-         " jump  "
-         (propertize "g" 'face 'help-key-binding)
-         " refresh  "
-         (propertize "q" 'face 'help-key-binding)
-         " quit"))
   (time-zones--load-city-list)
   (time-zones--start-timer)
   (add-hook 'kill-buffer-hook 'time-zones--stop-timer nil t)
@@ -479,6 +481,18 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
                                     'face '(header-line (:height 1.5)))
                         "\n\n")))
     (erase-buffer)
+    (setq header-line-format
+          (when time-zones-show-help
+            (concat
+             "  "
+             (propertize "+" 'face 'help-key-binding)
+             " add city  "
+             (propertize "D" 'face 'help-key-binding)
+             " delete city  "
+             (propertize "(" 'face 'help-key-binding)
+             " details  "
+             (propertize "?" 'face 'help-key-binding)
+             " help")))
     (insert title)
     (when time-zones--city-list
       (let* ((sorted-cities (time-zones--sort-cities-by-time
@@ -506,16 +520,25 @@ Consider LOCAL-TIME, MAX-LOCATION-WIDTH, MAX-DATE-WIDTH, and MAX-OFFSET-WIDTH."
           (insert (time-zones--format-city city local-time max-location-width max-date-width max-offset-width)))))
     (unless (seq-empty-p time-zones--city-list)
       (insert "\n"))
-    (insert (concat
-             " "
-             (propertize "+" 'face 'help-key-binding)
-             (propertize " add city  " 'face 'header-line)
-             (propertize "D" 'face 'help-key-binding)
-             (propertize " delete city  " 'face 'header-line)
-             (propertize "(" 'face 'help-key-binding)
-             (propertize " toggle details  " 'face 'header-line)))
-    (when-let ((window (get-buffer-window "*time zones*" t)))
-      (fit-window-to-buffer window))
+    (if time-zones-show-help
+        (progn
+          (insert (concat
+                   " "
+                   (propertize "f" 'face 'help-key-binding)
+                   (propertize " forward  " 'face 'header-line)
+                   (propertize "b" 'face 'help-key-binding)
+                   (propertize " backward  " 'face 'header-line)
+                   (propertize "j" 'face 'help-key-binding)
+                   (propertize " jump  " 'face 'header-line)
+                   (propertize "g" 'face 'help-key-binding)
+                   (propertize " refresh  " 'face 'header-line)
+                   (propertize "q" 'face 'help-key-binding)
+                   (propertize " quit  " 'face 'header-line)))
+          (insert "\n\n ")))
+    (insert "\n\n\n ")
+    (when-let ((window (get-buffer-window "*time zones*" t))
+               (height (count-lines (point-min) (point-max))))
+      (fit-window-to-buffer window height height))
     (goto-char (point-min))
     (when (> current-line 1)
       (forward-line (1- current-line)))))
