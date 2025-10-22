@@ -110,8 +110,48 @@ Each item is an alist containing keys like:
 (defvar time-zones--time-offset 0
   "Manual time offset in seconds.  When non-zero, timer is stopped.")
 
+(defvar time-zones--cursor-timer nil
+  "Timer for hiding cursor.")
+
+(defvar time-zones--cursor-hidden nil
+  "Whether cursor is currently hidden.")
+
+(defvar time-zones--cursor-original-type nil
+  "Original cursor type before hiding.")
+
 (defconst time-zones--version "0.3.2"
   "Version of the `time-zones' package.")
+
+(defun time-zones--cursor-hide ()
+  "Hide the cursor."
+  (unless time-zones--cursor-hidden
+    (setq time-zones--cursor-hidden t)
+    (setq cursor-type nil)))
+
+(defun time-zones--cursor-show ()
+  "Show the cursor and reset timer."
+  (when time-zones--cursor-hidden
+    (setq time-zones--cursor-hidden nil)
+    (setq cursor-type time-zones--cursor-original-type))
+  (when time-zones--cursor-timer
+    (cancel-timer time-zones--cursor-timer))
+  (let ((buffer (current-buffer)))
+    (setq time-zones--cursor-timer
+          (run-with-timer 4 nil
+                          (lambda ()
+                            (when (buffer-live-p buffer)
+                              (with-current-buffer buffer
+                                (time-zones--cursor-hide))))))))
+
+(defun time-zones--cursor-cleanup ()
+  "Clean up cursor hiding when buffer is killed."
+  (remove-hook 'pre-command-hook #'time-zones--cursor-show t)
+  (when time-zones--cursor-timer
+    (cancel-timer time-zones--cursor-timer)
+    (setq time-zones--cursor-timer nil))
+  (when time-zones--cursor-hidden
+    (setq cursor-type time-zones--cursor-original-type
+          time-zones--cursor-hidden nil)))
 
 ;;;###autoload
 (defun time-zones ()
@@ -366,6 +406,18 @@ Returns an alist of (IANA-TZ . POSIX-TZ) pairs."
   (time-zones--load-city-list)
   (time-zones--start-timer)
   (add-hook 'kill-buffer-hook 'time-zones--stop-timer nil t)
+
+  ;; Set up auto-hide cursor
+  (make-local-variable 'time-zones--cursor-timer)
+  (make-local-variable 'time-zones--cursor-hidden)
+  (make-local-variable 'time-zones--cursor-original-type)
+  (setq time-zones--cursor-original-type cursor-type)
+  (add-hook 'pre-command-hook #'time-zones--cursor-show nil t)
+  (add-hook 'kill-buffer-hook 'time-zones--cursor-cleanup nil t)
+
+  ;; Start with cursor hidden
+  (setq cursor-type nil)
+  (setq time-zones--cursor-hidden t)
   (time-zones--refresh-display))
 
 (defun time-zones--start-timer ()
